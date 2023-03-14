@@ -48,7 +48,7 @@
 
         loggedIn({ isAuthenticated: true, user: appData.company.users[i] });
 
-        replace("/home");
+        replace("/users");
 
         isLoading = false;
     }

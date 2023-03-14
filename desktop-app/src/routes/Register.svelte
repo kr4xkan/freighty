@@ -2,6 +2,7 @@
     import Icon from "@iconify/svelte";
     import { link, replace } from "svelte-spa-router";
     import { z } from "zod";
+    import { DateInput } from "date-picker-svelte";
 
     import type { User } from "../types";
     import { addUser, AppStore, loggedIn } from "../stores";
@@ -15,7 +16,7 @@
         name: "",
         surname: "",
         contact: "",
-        dateOfBirth: new Date()
+        dateOfBirth: new Date(),
     };
 
     function onRegister() {
@@ -27,32 +28,32 @@
             name: z.string().min(1),
             surname: z.string().min(1),
             contact: z.string().min(1),
-            dateOfBirth: z.date()
+            dateOfBirth: z.date(),
         });
         let result = validatorSchema.safeParse(data);
 
         errors = {};
         if (!result.success) {
             errors = result.error.flatten().fieldErrors;
-            
+
             isLoading = false;
             return;
         }
-        
+
         const user: User = {
             ...data,
             id: $AppStore.company.users.length,
             role: "manager",
-            extraInfo: {}
+            extraInfo: {},
         };
 
         addUser(user);
         loggedIn({
             isAuthenticated: true,
-            user
+            user,
         });
 
-        replace("/home");
+        replace("/users");
 
         isLoading = false;
     }
@@ -60,7 +61,7 @@
 
 <div class="container">
     <form on:submit|preventDefault={onRegister}>
-        <div class="form-input {errors.name && "error"}">
+        <div class="form-input {errors.name && 'error'}">
             <input
                 class="form-control"
                 name="name"
@@ -70,7 +71,7 @@
             />
             <div class="icon"><Icon icon="mdi:user" /></div>
         </div>
-        <div class="form-input {errors.surname && "error"}">
+        <div class="form-input {errors.surname && 'error'}">
             <input
                 class="form-control"
                 name="surname"
@@ -80,7 +81,7 @@
             />
             <div class="icon"><Icon icon="mdi:user" /></div>
         </div>
-        <div class="form-input {errors.contact && "error"}">
+        <div class="form-input {errors.contact && 'error'}">
             <input
                 class="form-control"
                 name="contact"
@@ -90,16 +91,11 @@
             />
             <div class="icon"><Icon icon="mdi:at" /></div>
         </div>
-        <div class="form-input {errors.dateOfBirth && "error"}">
-            <input
-                class="form-control"
-                name="dateOfBirth"
-                type="date"
-                bind:value={data.dateOfBirth}
-            />
+        <div class="form-input {errors.dateOfBirth && 'error'}">
+            <DateInput min={new Date("1900")} format="dd/MM/yyyy" bind:value={data.dateOfBirth} />
             <div class="icon"><Icon icon="mdi:calendar-range" /></div>
         </div>
-        <div class="form-input {errors.login && "error"}">
+        <div class="form-input {errors.login && 'error'}">
             <input
                 class="form-control"
                 name="login"
@@ -109,7 +105,7 @@
             />
             <div class="icon"><Icon icon="mdi:user" /></div>
         </div>
-        <div class="form-input {errors.password && "error"}">
+        <div class="form-input {errors.password && 'error'}">
             <input
                 name="password"
                 class="form-control"
@@ -126,7 +122,7 @@
 
 <style lang="scss">
     .container {
-        height: 100%;
+        height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -154,6 +150,20 @@
                 padding: 0 8px;
                 transition: all 0.2s;
                 border-radius: 8px;
+
+
+                > :global(.date-time-field) {
+                    width: 100%;
+                    height: 100%;
+                    padding: 12px 0;
+
+                    > :global(input) {
+                        width: 100%;
+                        height: 100%;
+                        background: none;
+                        border: none;
+                    }
+                }
 
                 &:focus-within,
                 &:hover {
