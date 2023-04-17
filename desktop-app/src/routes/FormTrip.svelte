@@ -1,25 +1,24 @@
 <script lang="ts">
     import Icon from "@iconify/svelte";
     import { dialog } from "@tauri-apps/api";
+    import { addTrip, updateTrip } from "../lib/api/trip";
     import { push } from "svelte-spa-router";
-    import { z } from "zod";
 
     import Layout from "../lib/Layout.svelte";
     import { AppStore } from "../stores";
-    import type { Checkpoint } from "../types";
+    import { onMount } from "svelte";
 
     export let params: {
-        id: number;
+        id: string;
     };
 
-    const trip =
-        params.id !== -1 ? $AppStore.company.trips[params.id] : undefined;
+    const trip = $AppStore.company.trips.find((e) => e.id === parseInt(params.id));
 
     let data = {
         cargo: trip?.cargo ?? "",
-        path: trip?.path ?? [{ address: "Start" }, { address: "End" }],
-        manager: trip?.manager?.id ?? -1,
-        truck: trip?.truck?.id ?? -1
+        path: trip?.path.map((e) => ({ address: e.address, order: e.order })).sort((a, b) => a.order - b.order) ?? [{ address: "Start", order: 0 }, { address: "End", order: 1 }],
+        managerId: trip?.manager?.id ?? -1,
+        truckId: trip?.truck?.id ?? -1
     };
 
     const appData = $AppStore;
@@ -30,44 +29,26 @@
     async function onSave() {
         isLoading = true;
 
-        let validatorSchema = z.object({
-            cargo: z.string().min(1),
-            path: z.custom<Checkpoint[]>(),
-            manager: z.number(),
-            truck: z.number()
-        });
-        let result = validatorSchema.safeParse(data);
+        let req = {
+            ...data,
+            path: data.path.map((e) => e.address)
+        }
 
-        errors = {};
-        if (!result.success) {
-            errors = result.error.flatten().fieldErrors;
+        let res;
+        if (trip) { // UPDATE
+            res = await updateTrip(trip.id, req);
+        } else { // CREATE
+            res = await addTrip(req);
+        }
+
+        if (!res.success) {
+            errors = {};
+            res.fields?.forEach((e) => {
+                errors[e] = " ";
+            });
 
             isLoading = false;
             return;
-        }
-
-        let dt = {
-            ...result.data,
-            manager: appData.company.users[result.data.manager],
-            truck: appData.company.fleet[result.data.truck],
-        };
-
-        if (trip) {
-            let updated = trip;
-            updated = {
-                ...updated,
-                ...dt,
-            };
-
-            AppStore.update((v) => {
-                v.company.trips[params.id] = updated;
-                return v;
-            });
-        } else {
-            AppStore.update((v) => {
-                v.company.trips.push(dt);
-                return v;
-            });
         }
 
         await dialog.message("Trip updated.");
@@ -84,7 +65,7 @@
     function onAddCheckpoint() {
         data.path = [
             ...data.path,
-            { address: `Checkpoint ${data.path.length + 1}` },
+            { address: `Checkpoint ${data.path.length + 1}`, order: data.path[data.path.length - 1].order + 1 },
         ];
     }
 
@@ -107,31 +88,31 @@
                 />
                 <div class="icon"><Icon icon="mdi:user" /></div>
             </div>
-            <div class="form-input">
+            <div class="form-input {errors.managerId && 'error'}">
                 <label for="model">Manager</label>
-                <select name="driver" bind:value={data.manager}>
+                <select name="driver" bind:value={data.managerId}>
                     <option value={-1}>None</option>
                     <option disabled>-- Managers --</option>
-                    {#each appData.company.users as v, i}
+                    {#each appData.company.users as v}
                         {#if v.role === "manager"}
-                            <option value={i}>{v.name} {v.surname}</option>
+                            <option value={v.id}>{v.name} {v.surname}</option>
                         {/if}
                     {/each}
                 </select>
                 <div class="icon"><Icon icon="mdi:user" /></div>
             </div>
-            <div class="form-input">
+            <div class="form-input {errors.truckId && 'error'}">
                 <label for="model">Truck</label>
-                <select name="driver" bind:value={data.truck}>
+                <select name="driver" bind:value={data.truckId}>
                     <option value={-1}>None</option>
                     <option disabled>-- Trucks --</option>
-                    {#each appData.company.fleet as v, i}
-                    <option value={i}>{v.licensePlate} - {v.model}</option>
+                    {#each appData.company.fleet as v}
+                    <option value={v.id}>{v.licensePlate} - {v.model}</option>
                     {/each}
                 </select>
                 <div class="icon"><Icon icon="mdi:user" /></div>
             </div>
-            <div class="form-input-select">
+            <div class="form-input-select {errors.path && 'error'}">
                 <label for="model">Checkpoints</label>
                 <button on:click|preventDefault={onAddCheckpoint}>Add checkpoint</button
                 >
@@ -189,6 +170,10 @@
             border-radius: 4px;
             margin-bottom: 48px;
             
+            &.error {
+                border: 3px solid #f55;
+            }
+
             > button {
                 padding: 8px 16px;
                 background-color: var(--tertiary-lighter);

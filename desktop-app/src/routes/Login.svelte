@@ -1,7 +1,7 @@
 <script lang="ts">
     import Icon from "@iconify/svelte";
+    import { login } from "../lib/api/user";
     import { link, replace } from "svelte-spa-router";
-    import { z } from "zod";
 
     import { AppStore, loggedIn } from "../stores";
 
@@ -16,39 +16,21 @@
         password: "",
     };
 
-    function onLogin() {
+    async function onLogin() {
         isLoading = true;
 
-        let validatorSchema = z.object({
-            login: z.string().min(1),
-            password: z.string().min(1)
-        });
-        let result = validatorSchema.safeParse(data);
+        const res = await login(data);
 
-        errors = {};
-        if (!result.success) {
-            errors = result.error.flatten().fieldErrors;
-            
-            isLoading = false;
-            return;
+        if (res.success) {
+            loggedIn({ isAuthenticated: true, user: res.user });
+
+            replace("/users");
+        } else {
+            errors = {};
+            res.fields?.forEach((e) => {
+                errors[e] = " ";
+            });
         }
-        let process = result.data;
-
-        let i = appData.company.users.findIndex((u) => u.login === process.login);
-        if (i === -1) {
-            errors.login = true;
-            isLoading = false;
-            return;
-        }
-        if (appData.company.users[i].password !== process.password) {
-            errors.password = true;
-            isLoading = false;
-            return;
-        }
-
-        loggedIn({ isAuthenticated: true, user: appData.company.users[i] });
-
-        replace("/users");
 
         isLoading = false;
     }

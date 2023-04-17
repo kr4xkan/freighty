@@ -5,6 +5,12 @@
     import { AppStore } from "../stores";
     import Layout from "../lib/Layout.svelte";
     import { push } from "svelte-spa-router";
+    import { loadUsers } from "../lib/api/user";
+    import { onMount } from "svelte";
+
+    onMount(async () => {
+        await loadUsers();
+    });
 
     $: users = $AppStore.company.users;
 
@@ -36,16 +42,16 @@
             <th>Role</th>
             <th>Actions</th>
         </tr>
-        {#each users as u, i}
+        {#each users as u}
             <tr class="user-card">
-                <td>{i}</td>
+                <td>{u.id}</td>
                 <td>{u.name}</td>
                 <td>{u.surname}</td>
                 <td>{u.contact}</td>
                 <td>{u.role}</td>
                 <td>
-                    <button on:click|preventDefault={() => onEdit(i)}><Icon icon="mdi:lead-pencil" /></button>
-                    <button on:click|preventDefault={() => onDelete(i)}><Icon icon="mdi:delete"/></button>
+                    <button on:click|preventDefault={() => onEdit(u.id)}><Icon icon="mdi:lead-pencil" /></button>
+                    <button on:click|preventDefault={() => onDelete(u.id)}><Icon icon="mdi:delete"/></button>
                 </td>
             </tr>
         {/each}

@@ -6,54 +6,40 @@
 
     import type { User } from "../types";
     import { addUser, AppStore, loggedIn } from "../stores";
+    import { register } from "../lib/api/user";
 
     let isLoading = false;
     let errors: any = {};
 
+    let bindDate = new Date();
     let data = {
         login: "",
         password: "",
         name: "",
         surname: "",
         contact: "",
-        dateOfBirth: new Date(),
+        dateOfBirth: Date.now(),
     };
 
-    function onRegister() {
+    $: () => {
+        data.dateOfBirth = bindDate.getTime();
+    };
+
+    async function onRegister() {
         isLoading = true;
 
-        let validatorSchema = z.object({
-            login: z.string().min(1),
-            password: z.string().min(1),
-            name: z.string().min(1),
-            surname: z.string().min(1),
-            contact: z.string().min(1),
-            dateOfBirth: z.date(),
-        });
-        let result = validatorSchema.safeParse(data);
+        const res = await register(data);
 
-        errors = {};
-        if (!result.success) {
-            errors = result.error.flatten().fieldErrors;
+        if (res.success) {
+            loggedIn({ isAuthenticated: true, user: res.user });
 
-            isLoading = false;
-            return;
+            replace("/users");
+        } else {
+            errors = {};
+            res.fields?.forEach((e) => {
+                errors[e] = " ";
+            });
         }
-
-        const user: User = {
-            ...data,
-            id: $AppStore.company.users.length,
-            role: "manager",
-            extraInfo: {},
-        };
-
-        addUser(user);
-        loggedIn({
-            isAuthenticated: true,
-            user,
-        });
-
-        replace("/users");
 
         isLoading = false;
     }
@@ -92,7 +78,11 @@
             <div class="icon"><Icon icon="mdi:at" /></div>
         </div>
         <div class="form-input {errors.dateOfBirth && 'error'}">
-            <DateInput min={new Date("1900")} format="dd/MM/yyyy" bind:value={data.dateOfBirth} />
+            <DateInput
+                min={new Date("1900")}
+                format="dd/MM/yyyy"
+                bind:value={bindDate}
+            />
             <div class="icon"><Icon icon="mdi:calendar-range" /></div>
         </div>
         <div class="form-input {errors.login && 'error'}">
@@ -150,7 +140,6 @@
                 padding: 0 8px;
                 transition: all 0.2s;
                 border-radius: 8px;
-
 
                 > :global(.date-time-field) {
                     width: 100%;

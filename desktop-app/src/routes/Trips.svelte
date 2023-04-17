@@ -5,8 +5,14 @@
     import { AppStore } from "../stores";
     import Layout from "../lib/Layout.svelte";
     import { push } from "svelte-spa-router";
+    import { onMount } from "svelte";
+    import { loadTrip, removeTrip } from "../lib/api/trip";
 
     $: trips = $AppStore.company.trips;
+
+    onMount(async () => {
+        await loadTrip();
+    });
 
     function onEdit(id: number) {
         push("/trips/"+id);
@@ -17,12 +23,14 @@
     }
 
     async function onDelete(id: number) {
-        const trip = trips[id];
+        const trip = trips.find(e => e.id === id);
+        if (!trip) return;
         let yes = await dialog.confirm(`Are you sure you want to delete '${trip.cargo}' ?`);
         if (!yes) return;
 
+        await removeTrip(id);
         AppStore.update((v) => {
-            v.company.trips = v.company.trips.filter((_, i) => i !== id);
+            v.company.trips = v.company.trips.filter((e) => e.id !== id);
             return v;
         });
     }
@@ -39,16 +47,16 @@
             <th>Truck</th>
             <th>Actions</th>
         </tr>
-        {#each trips as u, i}
+        {#each trips as u}
             <tr>
-                <td>{i}</td>
+                <td>{u.id}</td>
                 <td>{u.cargo}</td>
                 <td>{Math.max(u.path.length - 1, 0)}</td>
                 <td>{u.manager?.name ?? "/"}</td>
                 <td>{u.truck?.licensePlate ?? "/"}</td>
                 <td>
-                    <button on:click|preventDefault={() => onEdit(i)}><Icon icon="mdi:lead-pencil" /></button>
-                    <button on:click|preventDefault={() => onDelete(i)}><Icon icon="mdi:delete"/></button>
+                    <button on:click|preventDefault={() => onEdit(u.id)}><Icon icon="mdi:lead-pencil" /></button>
+                    <button on:click|preventDefault={() => onDelete(u.id)}><Icon icon="mdi:delete"/></button>
                 </td>
             </tr>
         {/each}

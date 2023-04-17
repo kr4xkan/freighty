@@ -5,6 +5,12 @@
     import { AppStore } from "../stores";
     import Layout from "../lib/Layout.svelte";
     import { push } from "svelte-spa-router";
+    import { onMount } from "svelte";
+    import { loadFleet, removeTruck } from "../lib/api/fleet";
+
+    onMount(async () => {
+        await loadFleet();
+    })
 
     $: trucks = $AppStore.company.fleet;
 
@@ -17,14 +23,15 @@
     }
 
     async function onDelete(id: number) {
-        const truck = trucks[id];
+        const truck = trucks.find((v) => v.id === id);
+        if (!truck) return;
         let yes = await dialog.confirm(`Are you sure you want to delete '${truck.licensePlate}' ?`);
         if (!yes) return;
 
-        console.log(id);
+        await removeTruck(id);
 
         AppStore.update((v) => {
-            v.company.fleet = v.company.fleet.filter((_, i) => i !== id);
+            v.company.fleet = v.company.fleet.filter((v) => v.id !== id);
             return v;
         });
     }
@@ -40,15 +47,15 @@
             <th>Current Driver</th>
             <th>Actions</th>
         </tr>
-        {#each trucks as u, i}
+        {#each trucks as u}
             <tr>
-                <td>{i}</td>
+                <td>{u.id}</td>
                 <td>{u.licensePlate}</td>
                 <td>{u.model}</td>
                 <td>{u.currentDriver?.name ?? "/"}</td>
                 <td>
-                    <button on:click|preventDefault={() => onEdit(i)}><Icon icon="mdi:lead-pencil" /></button>
-                    <button on:click|preventDefault={() => onDelete(i)}><Icon icon="mdi:delete"/></button>
+                    <button on:click|preventDefault={() => onEdit(u.id)}><Icon icon="mdi:lead-pencil" /></button>
+                    <button on:click|preventDefault={() => onDelete(u.id)}><Icon icon="mdi:delete"/></button>
                 </td>
             </tr>
         {/each}

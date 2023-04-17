@@ -14,7 +14,7 @@ export type User = {
     password: string;
     role: "admin" | "manager" | "worker";
     contact: string;
-    dateOfBirth: Date;
+    dateOfBirth: number;
     extraInfo: ExtraUserInfo;
 }
 
@@ -30,6 +30,7 @@ export type Truck = {
 }
 
 export type Trip = {
+    id: number;
     cargo: string;
     truck?: Truck;
     manager?: User;
@@ -37,10 +38,13 @@ export type Trip = {
 }
 
 export type Checkpoint = {
+    id: number;
     address: string;
+    order: number;
 }
 
 export type ForumPost = {
+    id: number;
     title: string;
     content: string;
     author: User;
@@ -48,6 +52,7 @@ export type ForumPost = {
 }
 
 export type Comment = {
+    id: number;
     content: string;
     author: User;
     reply?: Comment[];

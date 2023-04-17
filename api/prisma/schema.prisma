@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id         Int     @unique @default(autoincrement())
+  name       String
+  users      User[]
+  fleet      Truck[]
+  trips      Trip[]
+  forumPosts Post[]
+}
+
+enum Role {
+  admin
+  manager
+  worker
+}
+
+model User {
+  id       Int    @unique @default(autoincrement())
+  login    String
+  password String
+
+  name               String
+  surname            String
+  contact            String
+  role               Role
+  dateOfBirth        DateTime
+  medicalCertificate String?
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId Int
+
+  trucks  Truck[]
+  trips   Trip[]
+  Post    Post[]
+  Comment Comment[]
+}
+
+model Truck {
+  id           Int    @unique @default(autoincrement())
+  licensePlate String
+  model        String
+
+  currentDriver   User?   @relation(fields: [currentDriverId], references: [id], onDelete: SetNull)
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currentDriverId Int?
+  companyId       Int
+  trips           Trip[]
+}
+
+model Trip {
+  id    Int    @unique @default(autoincrement())
+  cargo String
+
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId Int
+
+  truck     Truck? @relation(fields: [truckId], references: [id], onDelete: SetNull)
+  manager   User?  @relation(fields: [managerId], references: [id], onDelete: SetNull)
+  truckId   Int?
+  managerId Int?
+
+  path Checkpoint[]
+}
+
+model Checkpoint {
+  id      Int    @unique @default(autoincrement())
+  address String
+  order   Int
+
+  trip   Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripId Int
+}
+
+model Post {
+  id        Int       @unique @default(autoincrement())
+  title     String
+  content   String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  Int
+  company   Company   @relation(fields: [companyId], references: [id])
+  companyId Int
+  comments  Comment[]
+}
+
+model Comment {
+  id       Int    @unique @default(autoincrement())
+  content  String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int
+
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("Replies")
+  parentId Int?
+  postId   Int
+}

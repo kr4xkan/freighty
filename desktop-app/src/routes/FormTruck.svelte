@@ -1,24 +1,24 @@
 <script lang="ts">
     import Icon from "@iconify/svelte";
     import { dialog } from "@tauri-apps/api";
+    import { addTruck, updateTruck } from "../lib/api/fleet";
     import { push } from "svelte-spa-router";
-    import { z } from "zod";
     
     import Layout from "../lib/Layout.svelte";
     import { AppStore } from "../stores";
 
     export let params: {
-        id: number;
+        id: string;
     };
 
     const appData = $AppStore;
 
-    const truck = params.id !== -1 ? $AppStore.company.fleet[params.id] : undefined;
+    const truck = $AppStore.company.fleet.find((v) => v.id === parseInt(params.id));
 
     let data = {
         licensePlate: truck?.licensePlate ?? "",
         model: truck?.model ?? "",
-        currentDriver: truck?.currentDriver?.id ?? -1
+        currentDriverId: truck?.currentDriver?.id ?? -1
     };
 
     let isLoading = false;
@@ -27,45 +27,21 @@
     async function onSave() {
         isLoading = true;
 
-        let validatorSchema = z.object({
-            licensePlate: z.string().min(1),
-            model: z.string().min(1),
-            currentDriver: z.number()
-        });
-        let result = validatorSchema.safeParse(data);
-
-        errors = {};
-        if (!result.success) {
-            errors = result.error.flatten().fieldErrors;
-            
-            isLoading = false;
-            return;
+        let res;
+        if (!truck) { // CREATE
+            res = await addTruck(data);
+        } else { // UPDATE
+            res = await updateTruck(truck.id, data);    
         }
 
-        let dt = {
-            ...result.data,
-            currentDriver: appData.company.users[result.data.currentDriver]
-        };
+        if (!res.success) {
+            errors = {};
+            res.fields?.forEach((e) => {
+                errors[e] = " ";
+            });
 
-        if (truck) {
-            let updated = truck;
-            updated = {
-                ...updated,
-                ...dt
-            };
-    
-            AppStore.update((v) => {
-                v.company.fleet[params.id] = updated;
-                return v;
-            });
-        } else {
-            AppStore.update((v) => {
-                v.company.fleet.push({
-                    id: appData.company.fleet.length,
-                    ...dt
-                });
-                return v;
-            });
+            isLoading = false;
+            return;
         }
 
         await dialog.message("Truck updated.");
@@ -105,14 +81,14 @@
                 />
                 <div class="icon"><Icon icon="mdi:user" /></div>
             </div>
-            <div class="form-input">
+            <div class="form-input {errors.currentDriverId && "error"}">
                 <label for="model">Current driver</label>
-                <select name="driver" bind:value={data.currentDriver}>
+                <select name="driver" bind:value={data.currentDriverId}>
                     <option value={-1}>None</option>
                     <option disabled>-- Workers --</option>
-                    {#each appData.company.users as v, i}
+                    {#each appData.company.users as v}
                         {#if v.role === "worker"}
-                            <option value={i}>{v.name} {v.surname}</option>
+                            <option value={v.id}>{v.name} {v.surname}</option>
                         {/if}
                     {/each}
                 </select>

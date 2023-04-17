@@ -3,24 +3,26 @@
     import { dialog } from "@tauri-apps/api";
     import { push } from "svelte-spa-router";
     import { DateInput } from "date-picker-svelte";
-    import { z } from "zod";
 
     import Layout from "../lib/Layout.svelte";
     import { AppStore } from "../stores";
+    import { updateUser } from "../lib/api/user";
 
     export let params: {
-        id: number;
+        id: string;
     };
 
-    const user = $AppStore.company.users[params.id];
+    const user = $AppStore.company.users.find(v => v.id === parseInt(params.id));
 
-    $: data = {
-        login: user.login,
-        password: user.password,
-        name: user.name,
-        surname: user.surname,
-        contact: user.contact,
-        dateOfBirth: user.dateOfBirth,
+    let dateBind = new Date(user?.dateOfBirth ?? Date.now());
+
+    let data = {
+        login: user?.login ?? "",
+        password: user?.password ?? "",
+        name: user?.name ?? "",
+        surname: user?.surname ?? "",
+        contact: user?.contact ?? "",
+        dateOfBirth: dateBind.getTime(),
     };
 
     let isLoading = false;
@@ -28,35 +30,18 @@
 
     async function onSave() {
         isLoading = true;
+        data.dateOfBirth = dateBind.getTime();
 
-        let validatorSchema = z.object({
-            login: z.string().min(1),
-            password: z.string().min(1),
-            name: z.string().min(1),
-            surname: z.string().min(1),
-            contact: z.string().email().min(1),
-            dateOfBirth: z.date(),
-        });
-        let result = validatorSchema.safeParse(data);
-
-        errors = {};
-        if (!result.success) {
-            errors = result.error.flatten().fieldErrors;
+        const res = await updateUser(parseInt(params.id), data);
+        if (!res.success) {
+            errors = {};
+            res.fields?.forEach((e) => {
+                errors[e] = " ";
+            });
 
             isLoading = false;
             return;
         }
-
-        let updated = user;
-        updated = {
-            ...updated,
-            ...result.data,
-        };
-
-        AppStore.update((v) => {
-            v.company.users[params.id] = updated;
-            return v;
-        });
 
         await dialog.message("User updated.");
 
@@ -108,7 +93,7 @@
             </div>
             <div class="form-input {errors.dateOfBirth && 'error'}">
                 <label for="dateOfBirth">Date of birth</label>
-                <DateInput format="dd/MM/yyyy" bind:value={data.dateOfBirth} />
+                <DateInput min={new Date("01/01/1900")} format="dd/MM/yyyy" bind:value={dateBind} />
                 <div class="icon"><Icon icon="mdi:calendar-range" /></div>
             </div>
             <div class="form-input {errors.login && 'error'}">
