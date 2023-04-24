@@ -26,7 +26,11 @@ export const loadTrip = async (user: User): Promise<void> => {
 
 type AddRequest = {
     cargo: string;
-    path: string[];
+    path: {
+        address: string;
+        lat: number;
+        lon: number;
+    }[];
     managerId: number;
     truckId: number;
 }

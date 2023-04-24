@@ -1,4 +1,5 @@
 import "./styles.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import App from "./App.svelte";
 
 const app = new App({

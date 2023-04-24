@@ -22,6 +22,7 @@
         name: user?.name ?? "",
         surname: user?.surname ?? "",
         contact: user?.contact ?? "",
+        medicalCertificate: user?.medicalCertificate ?? "",
         dateOfBirth: dateBind.getTime(),
     };
 
@@ -118,8 +119,23 @@
                 />
                 <div class="icon"><Icon icon="mdi:password" /></div>
             </div>
-            <button on:click|preventDefault={onCancel}>Cancel</button>
-            <input type="submit" value="Save" disabled={isLoading} />
+            {#if user?.role === "worker"}
+            <div class="form-input {errors.medicalCertificate && 'error'}">
+                <label for="medicalCertificate">Medical Certificate No.</label>
+                <input
+                    name="medicalCertificate"
+                    class="form-control"
+                    type="medicalCertificate"
+                    placeholder="643867249746320941897"
+                    bind:value={data.medicalCertificate}
+                />
+                <div class="icon"><Icon icon="mdi:medicalCertificate" /></div>
+            </div>
+            {/if}
+            <div class="buttons">
+                <button on:click|preventDefault={onCancel}>Cancel</button>
+                <input type="submit" value="Save" disabled={isLoading} />
+            </div>
         </form>
     </div>
 </Layout>
@@ -142,7 +158,7 @@
         padding-top: 32px;
 
         > .form-input {
-            margin-bottom: 24px;
+            margin-bottom: 48px;
             border: none;
             background-color: var(--primary-light);
             width: 300px;
@@ -218,33 +234,38 @@
             }
         }
 
-        > input,
-        > button {
-            height: 48px;
-            width: 200px;
-            background-color: var(--tertiary);
-            color: white;
-            border: none;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.05s ease-in;
-            cursor: pointer;
-            border-radius: 4px;
-
-            &:hover {
-                background-color: var(--tertiary-light);
+        > .buttons {
+            width: 100%;
+            display: flex;
+            justify-content: space-evenly;
+            > input,
+            > button {
+                height: 48px;
+                width: 200px;
+                background-color: var(--tertiary);
+                color: white;
+                border: none;
+                font-weight: 600;
+                font-size: 16px;
+                transition: all 0.05s ease-in;
+                cursor: pointer;
+                border-radius: 4px;
+    
+                &:hover {
+                    background-color: var(--tertiary-light);
+                }
+    
+                &:disabled {
+                    background-color: #a5c2e7;
+                    cursor: progress;
+                }
             }
-
-            &:disabled {
-                background-color: #a5c2e7;
-                cursor: progress;
-            }
-        }
-
-        > button {
-            background-color: var(--secondary-light);
-            &:hover {
-                background-color: var(--secondary-lighter);
+    
+            > button {
+                background-color: var(--secondary-light);
+                &:hover {
+                    background-color: var(--secondary-lighter);
+                }
             }
         }
     }

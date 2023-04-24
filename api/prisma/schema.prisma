@@ -77,6 +77,8 @@ model Checkpoint {
   id      Int    @unique @default(autoincrement())
   address String
   order   Int
+  lat     Float @default(0)
+  lon     Float @default(0)
 
   trip   Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
   tripId Int

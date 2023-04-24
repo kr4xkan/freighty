@@ -1,6 +1,6 @@
 import { Request, Router } from "express";
 import db from "../db";
-import { Array, Number, Record, Static, String } from "runtypes";
+import { Array, Number, Record, Static, String, Runtype } from "runtypes";
 import { validate } from "../libs/middleware";
 import { Truck, User } from "@prisma/client";
 
@@ -47,7 +47,11 @@ router.get("/", validate(GetReq), async (req: Request<any, any, GetReq>, res) =>
 
 const AddUpdateReq = Record({
     cargo: String.withConstraint(s => s.length > 1),
-    path: Array(String.withConstraint(s => s.length > 1)).withConstraint((e) => e.length > 1),
+    path: Array(Record({
+        address: String.withConstraint(s => s.length > 1),
+        lat: Number,
+        lon: Number,
+    })).withConstraint((e) => e.length > 1),
     managerId: Number,
     truckId: Number,
 });
@@ -92,7 +96,9 @@ router.post("/", validate(AddUpdateReq), async (req: Request<any, any, AddUpdate
     await Promise.all(req.body.path.map(async (e, i) => {
         await db.checkpoint.create({
             data: {
-                address: e,
+                address: e.address,
+                lat: e.lat,
+                lon: e.lon,
                 order: i,
                 tripId: newTrip.id
             }
@@ -147,7 +153,9 @@ router.put("/:id", validate(AddUpdateReq), async (req: Request<any, any, AddUpda
         await Promise.all(req.body.path.map(async (e, i) => {
             await db.checkpoint.create({
                 data: {
-                    address: e,
+                    address: e.address,
+                    lat: e.lat,
+                    lon: e.lon,
                     order: i,
                     tripId: searchTrip.id
                 }

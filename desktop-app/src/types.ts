@@ -15,11 +15,7 @@ export type User = {
     role: "admin" | "manager" | "worker";
     contact: string;
     dateOfBirth: number;
-    extraInfo: ExtraUserInfo;
-}
-
-export type ExtraUserInfo = {
-    medicalCertificate?: string;
+    medicalCertificate: string;
 }
 
 export type Truck = {
@@ -40,6 +36,8 @@ export type Trip = {
 export type Checkpoint = {
     id: number;
     address: string;
+    lat: number;
+    lon: number;
     order: number;
 }
 

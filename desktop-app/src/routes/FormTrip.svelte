@@ -3,22 +3,76 @@
     import { dialog } from "@tauri-apps/api";
     import { addTrip, updateTrip } from "../lib/api/trip";
     import { push } from "svelte-spa-router";
+    import mapboxgl from "mapbox-gl";
+    // @ts-ignore
+    import AutoComplete from "simple-svelte-autocomplete";
 
     import Layout from "../lib/Layout.svelte";
     import { AppStore, AuthStore } from "../stores";
+    import { hasRights } from "../lib/utils";
+    import { onMount } from "svelte";
 
     export let params: {
         id: string;
     };
 
-    const trip = $AppStore.company.trips.find((e) => e.id === parseInt(params.id));
+    const trip = $AppStore.company.trips.find(
+        (e) => e.id === parseInt(params.id)
+    );
 
     let data = {
         cargo: trip?.cargo ?? "",
-        path: trip?.path.map((e) => ({ address: e.address, order: e.order })).sort((a, b) => a.order - b.order) ?? [{ address: "Start", order: 0 }, { address: "End", order: 1 }],
-        managerId: trip?.manager?.id ?? ($AuthStore.user?.role === "manager" ? $AuthStore.user?.id : -1),
-        truckId: trip?.truck?.id ?? -1
+        path:
+            trip?.path
+                .map((e) => ({
+                    address: e.address,
+                    order: e.order,
+                    lat: e.lat,
+                    lon: e.lon,
+                }))
+                .sort((a, b) => a.order - b.order) ?? [],
+        managerId:
+            trip?.manager?.id ??
+            ($AuthStore.user?.role === "manager" ? $AuthStore.user?.id : -1),
+        truckId: trip?.truck?.id ?? -1,
     };
+
+    let map: mapboxgl.Map;
+
+    onMount(() => {
+        mapboxgl.accessToken = import.meta.env.VITE_MAP_BOX_API_KEY ?? "";
+        map = new mapboxgl.Map({
+            container: "map", // container ID
+            style: "mapbox://styles/mapbox/streets-v12", // style URL
+            center: [-74.5, 40], // starting position [lng, lat]
+            zoom: 9, // starting zoom
+        });
+        map.on('styledata', () => {
+            let geos: any = data.path.map((e: any) => [e.lat, e.lon]);
+            if (geos.length > 0) {
+                map.setCenter(geos[0]);
+            }
+
+            if (!map.getSource("route"))
+                map.addSource("route", {
+                    type: "geojson",
+                    data: {
+                        type: "Feature",
+                        properties: {},
+                        geometry: {
+                            type: "LineString",
+                            coordinates: geos,
+                        },
+                    },
+                });
+            if (!map.getLayer("route"))
+                map.addLayer({
+                    id: "route",
+                    source: "route",
+                    type: "line"
+                });
+        });
+    });
 
     const appData = $AppStore;
 
@@ -30,13 +84,21 @@
 
         let req = {
             ...data,
-            path: data.path.map((e) => e.address)
-        }
+            path: data.path.map((e) => {
+                return {
+                    address: e.address,
+                    lat: e.lat,
+                    lon: e.lon,
+                }
+            }),
+        };
 
         let res;
-        if (trip) { // UPDATE
+        if (trip) {
+            // UPDATE
             res = await updateTrip(trip.id, req);
-        } else { // CREATE
+        } else {
+            // CREATE
             res = await addTrip(req);
         }
 
@@ -61,16 +123,80 @@
         push("/trips");
     }
 
+    $: doGeoStuff(data);
+
+    const doGeoStuff = (newData: any) => {
+        if (!map) return;
+
+        let geos = newData.path.map((e: any) => [e.lat, e.lon]);
+
+        if (geos.length > 1) {
+            console.log(geos);
+            map.removeLayer("route");
+            map.removeSource("route");
+            map.addSource("route", {
+                type: "geojson",
+                data: {
+                    type: "Feature",
+                    properties: {},
+                    geometry: {
+                        type: "LineString",
+                        coordinates: geos,
+                    },
+                },
+            });
+            map.addLayer({
+                id: "route",
+                source: "route",
+                type: "line"
+            });
+        }
+    };
+
     function onAddCheckpoint() {
         data.path = [
             ...data.path,
-            { address: `Checkpoint ${data.path.length + 1}`, order: data.path[data.path.length - 1].order + 1 },
+            {
+                address: selectedAddress,
+                order: data.path.length > 0 ? data.path[data.path.length - 1].order + 1 : 0,
+                lat: selectedGeo[0],
+                lon: selectedGeo[1],
+            },
         ];
     }
 
     function onDeleteCheckpoint(i: number) {
         data.path = data.path.filter((_, k) => k !== i);
     }
+
+    async function getItems(keyword: string) {
+        const kw = encodeURIComponent(keyword);
+        const res = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${kw}.json?proximity=ip&access_token=pk.eyJ1Ijoia3I0eGthbiIsImEiOiJjbGd1djNrczMwMDBvM2xvZjVpMm8ya3g0In0.0UnG3JbdB-pXP31115mtIw`,
+            {
+                method: "GET",
+            }
+        );
+        const json = await res.json();
+        const results = json.features.map((e: any) => e.place_name);
+        return results;
+    }
+
+    async function selectAddress(final: string) {
+        const kw = encodeURIComponent(final);
+        const res = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${kw}.json?proximity=ip&access_token=pk.eyJ1Ijoia3I0eGthbiIsImEiOiJjbGd1djNrczMwMDBvM2xvZjVpMm8ya3g0In0.0UnG3JbdB-pXP31115mtIw`,
+            {
+                method: "GET",
+            }
+        );
+        const json = await res.json();
+        selectedGeo = json.features[0].center;
+        map.setCenter(selectedGeo);
+    }
+
+    let selectedGeo: [number, number];
+    let selectedAddress: string;
 </script>
 
 <Layout>
@@ -79,6 +205,10 @@
             <div class="form-input {errors.cargo && 'error'}">
                 <label for="cargo">Cargo</label>
                 <input
+                    disabled={!hasRights(
+                        "manager",
+                        $AuthStore.user?.role ?? ""
+                    )}
                     class="form-control"
                     name="cargo"
                     type="text"
@@ -89,7 +219,14 @@
             </div>
             <div class="form-input {errors.managerId && 'error'}">
                 <label for="model">Manager</label>
-                <select name="driver" bind:value={data.managerId}>
+                <select
+                    disabled={!hasRights(
+                        "manager",
+                        $AuthStore.user?.role ?? ""
+                    )}
+                    name="driver"
+                    bind:value={data.managerId}
+                >
                     <option value={-1}>None</option>
                     <option disabled>-- Managers --</option>
                     {#each appData.company.users as v}
@@ -102,28 +239,45 @@
             </div>
             <div class="form-input {errors.truckId && 'error'}">
                 <label for="model">Truck</label>
-                <select name="driver" bind:value={data.truckId}>
+                <select
+                    disabled={!hasRights(
+                        "manager",
+                        $AuthStore.user?.role ?? ""
+                    )}
+                    name="driver"
+                    bind:value={data.truckId}
+                >
                     <option value={-1}>None</option>
                     <option disabled>-- Trucks --</option>
                     {#each appData.company.fleet as v}
-                    <option value={v.id}>{v.licensePlate} - {v.model}</option>
+                        <option value={v.id}
+                            >{v.licensePlate} - {v.model}</option
+                        >
                     {/each}
                 </select>
                 <div class="icon"><Icon icon="mdi:user" /></div>
             </div>
             <div class="form-input-select {errors.path && 'error'}">
                 <label for="model">Checkpoints</label>
-                <button on:click|preventDefault={onAddCheckpoint}>Add checkpoint</button
+                <AutoComplete
+                    searchFunction={getItems}
+                    delay="400"
+                    localFiltering={false}
+                    onChange={selectAddress}
+                    bind:selectedItem={selectedAddress}
+                />
+                <button on:click|preventDefault={onAddCheckpoint}
+                    >Add checkpoint</button
                 >
                 <ul>
                     {#each data.path as _, i}
                         <li>
-                            <input
-                                type="text"
-                                name={`chp-${i}`}
-                                bind:value={data.path[i].address}
-                            />
-                            <button on:click|preventDefault={() => onDeleteCheckpoint(i)}><Icon icon="mdi:delete" /></button>
+                            <p>{data.path[i].address}</p>
+                            <button
+                                on:click|preventDefault={() =>
+                                    onDeleteCheckpoint(i)}
+                                ><Icon icon="mdi:delete" /></button
+                            >
                         </li>
                     {/each}
                 </ul>
@@ -132,9 +286,17 @@
             <input type="submit" value="Save" disabled={isLoading} />
         </form>
     </div>
+    <div id="map" />
 </Layout>
 
 <style lang="scss">
+    #map {
+        width: 500px;
+        height: 300px;
+        margin: 0 auto;
+        margin-top: 32px;
+    }
+
     .container {
         height: 100%;
         display: flex;
@@ -168,7 +330,7 @@
             position: relative;
             border-radius: 4px;
             margin-bottom: 48px;
-            
+
             &.error {
                 border: 3px solid #f55;
             }
@@ -198,8 +360,12 @@
                     width: 100%;
                     display: flex;
 
-                    > input {
+                    > p {
                         flex: 1;
+                        margin: 0;
+                        font-weight: 600;
+                        font-size: 12px;
+                        font-style: italic;
                     }
                 }
             }

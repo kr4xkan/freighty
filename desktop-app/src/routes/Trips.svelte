@@ -58,8 +58,10 @@
                 <td>{u.manager?.name ?? "/"}</td>
                 <td>{u.truck?.licensePlate ?? "/"}</td>
                 <td>
-                    {#if hasRights("manager", $AuthStore.user?.role || "" )}
+                    {#if hasRights("manager", $AuthStore.user?.role || "") || u.truck}
                     <button on:click|preventDefault={() => onEdit(u.id)}><Icon icon="mdi:lead-pencil" /></button>
+                    {/if}
+                    {#if hasRights("manager", $AuthStore.user?.role || "")}
                     <button on:click|preventDefault={() => onDelete(u.id)}><Icon icon="mdi:delete"/></button>
                     {/if}
                 </td>

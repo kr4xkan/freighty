@@ -51,8 +51,10 @@
                 <td>{u.contact}</td>
                 <td>{u.role}</td>
                 <td>
-                    {#if hasRights("admin", $AuthStore.user?.role || "" )}
+                    {#if u.id === $AuthStore.user?.id || hasRights("admin", $AuthStore.user?.role || "" )}
                     <button on:click|preventDefault={() => onEdit(u.id)}><Icon icon="mdi:lead-pencil" /></button>
+                    {/if}
+                    {#if hasRights("admin", $AuthStore.user?.role || "" )}
                     <button on:click|preventDefault={() => onDelete(u.id)}><Icon icon="mdi:delete"/></button>
                     {/if}
                 </td>
