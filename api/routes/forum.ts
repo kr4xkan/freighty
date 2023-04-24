@@ -27,6 +27,7 @@ router.get("/:id", async (req, res) => {
             comments: {
                 include: {
                     author: true,
+                    parent: true
                 }
             }
         }
@@ -37,7 +38,7 @@ router.get("/:id", async (req, res) => {
 const AddPostReq = Record({
     title: String.withConstraint(s => s.length > 1),
     content: String.withConstraint(s => s.length > 1),
-    authorId: Number,
+    authorId: Number
 });
 type AddPostReq = Static<typeof AddPostReq>;
 
@@ -57,7 +58,7 @@ router.post("/", validate(AddPostReq), async (req: Request<any, any, AddPostReq>
         data: {
             ...req.body,
             authorId: author.id,
-            companyId: 1
+            companyId: 1,
         },
         include: {
             comments: true,
@@ -71,6 +72,7 @@ router.post("/", validate(AddPostReq), async (req: Request<any, any, AddPostReq>
 const AddCommentReq = Record({
     content: String.withConstraint(s => s.length > 1),
     authorId: Number,
+    parentId: Number
 });
 type AddCommentReq = Static<typeof AddCommentReq>;
 
@@ -86,6 +88,7 @@ router.post("/:id/reply", validate(AddCommentReq), async (req: Request<any, any,
         });
     }
     author = search;
+    let parentId = req.body.parentId !== -1 ? req.body.parentId : null;
 
     const searchPost = await db.post.findUnique({ where: { id: parseInt(req.params.id) }});
     if (!searchPost) {
@@ -100,7 +103,8 @@ router.post("/:id/reply", validate(AddCommentReq), async (req: Request<any, any,
         data: {
             ...req.body,
             authorId: author.id,
-            postId: post.id
+            postId: post.id,
+            parentId
         },
     });
 

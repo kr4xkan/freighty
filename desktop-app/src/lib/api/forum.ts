@@ -51,6 +51,7 @@ export const addPost = async (req: AddPostRequest): Promise<AddPostResponse> => 
 type AddCommentRequest = {
     content: string;
     authorId: number;
+    parentId: number;
 }
 
 type AddCommentResponse = {

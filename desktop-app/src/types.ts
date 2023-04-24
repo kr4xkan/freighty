@@ -55,5 +55,5 @@ export type Comment = {
     id: number;
     content: string;
     author: User;
-    reply?: Comment[];
+    parent?: Comment;
 }

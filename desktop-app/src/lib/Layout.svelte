@@ -2,6 +2,7 @@
     import { AuthStore, type AuthData } from "../stores";
     import { link, replace } from "svelte-spa-router";
     import active from "svelte-spa-router/active";
+    import { hasRights } from "./utils";
 
     let authData: AuthData;
     AuthStore.subscribe((v) => (authData = v));
@@ -19,8 +20,10 @@
 
 <div class="navbar">
     <ul>
+        {#if hasRights("manager", $AuthStore.user?.role || "" )}
         <li><a href="/users" use:link use:active>Users</a></li>
         <li><a href="/fleet" use:link use:active>Fleet</a></li>
+        {/if}
         <li><a href="/trips" use:link use:active>Trips</a></li>
         <li><a href="/forum" use:link use:active>Forum</a></li>
         <li><button on:click|preventDefault={logout}>Logout</button></li>

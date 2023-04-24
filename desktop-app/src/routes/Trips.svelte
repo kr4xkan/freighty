@@ -2,16 +2,17 @@
     import { dialog } from "@tauri-apps/api";
     import Icon from "@iconify/svelte";
 
-    import { AppStore } from "../stores";
+    import { AppStore, AuthStore } from "../stores";
     import Layout from "../lib/Layout.svelte";
     import { push } from "svelte-spa-router";
     import { onMount } from "svelte";
     import { loadTrip, removeTrip } from "../lib/api/trip";
+    import { hasRights } from "../lib/utils";
 
     $: trips = $AppStore.company.trips;
 
     onMount(async () => {
-        await loadTrip();
+        if ($AuthStore.user) await loadTrip($AuthStore.user);
     });
 
     function onEdit(id: number) {
@@ -37,7 +38,9 @@
 </script>
 
 <Layout>
+    {#if hasRights("manager", $AuthStore.user?.role || "" )}
     <button class="add-button" on:click|preventDefault={onCreate}><Icon width={32} icon="material-symbols:add"/></button>
+    {/if}
     <table class="trip-list" cellspacing=0 cellpadding=8>
         <tr class="header">
             <th>Id</th>
@@ -55,8 +58,10 @@
                 <td>{u.manager?.name ?? "/"}</td>
                 <td>{u.truck?.licensePlate ?? "/"}</td>
                 <td>
+                    {#if hasRights("manager", $AuthStore.user?.role || "" )}
                     <button on:click|preventDefault={() => onEdit(u.id)}><Icon icon="mdi:lead-pencil" /></button>
                     <button on:click|preventDefault={() => onDelete(u.id)}><Icon icon="mdi:delete"/></button>
+                    {/if}
                 </td>
             </tr>
         {/each}

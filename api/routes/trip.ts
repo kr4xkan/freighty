@@ -6,17 +6,42 @@ import { Truck, User } from "@prisma/client";
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
-    const trips = await db.trip.findMany({
-        include: {
-            manager: true,
-            truck: true,
-            path: true
-        },
-        orderBy: {
-            id: "asc"
-        }
-    });
+const GetReq = Record({
+    role: String.withConstraint(s => s.length > 1),
+    id: Number
+});
+type GetReq = Static<typeof GetReq>;
+router.get("/", validate(GetReq), async (req: Request<any, any, GetReq>, res) => {
+    let trips;
+    if (req.body.role === "worker") {
+        trips = await db.trip.findMany({
+            include: {
+                manager: true,
+                truck: true,
+                path: true
+            },
+            where: {
+                OR: [
+                    { truck: null},
+                    { truck: { currentDriverId: req.body.id } }
+                ]
+            },
+            orderBy: {
+                id: "asc"
+            }
+        });
+    } else {
+        trips = await db.trip.findMany({
+            include: {
+                manager: true,
+                truck: true,
+                path: true
+            },
+            orderBy: {
+                id: "asc"
+            }
+        });
+    }
     res.json({ trips });
 });
 

@@ -2,11 +2,12 @@
     import { dialog } from "@tauri-apps/api";
     import Icon from "@iconify/svelte";
 
-    import { AppStore } from "../stores";
+    import { AppStore, AuthStore } from "../stores";
     import Layout from "../lib/Layout.svelte";
     import { push } from "svelte-spa-router";
     import { loadUsers } from "../lib/api/user";
     import { onMount } from "svelte";
+    import { hasRights } from "../lib/utils";
 
     onMount(async () => {
         await loadUsers();
@@ -50,8 +51,10 @@
                 <td>{u.contact}</td>
                 <td>{u.role}</td>
                 <td>
+                    {#if hasRights("admin", $AuthStore.user?.role || "" )}
                     <button on:click|preventDefault={() => onEdit(u.id)}><Icon icon="mdi:lead-pencil" /></button>
                     <button on:click|preventDefault={() => onDelete(u.id)}><Icon icon="mdi:delete"/></button>
+                    {/if}
                 </td>
             </tr>
         {/each}

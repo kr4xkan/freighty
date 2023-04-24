@@ -5,8 +5,7 @@
     import { push } from "svelte-spa-router";
 
     import Layout from "../lib/Layout.svelte";
-    import { AppStore } from "../stores";
-    import { onMount } from "svelte";
+    import { AppStore, AuthStore } from "../stores";
 
     export let params: {
         id: string;
@@ -17,7 +16,7 @@
     let data = {
         cargo: trip?.cargo ?? "",
         path: trip?.path.map((e) => ({ address: e.address, order: e.order })).sort((a, b) => a.order - b.order) ?? [{ address: "Start", order: 0 }, { address: "End", order: 1 }],
-        managerId: trip?.manager?.id ?? -1,
+        managerId: trip?.manager?.id ?? ($AuthStore.user?.role === "manager" ? $AuthStore.user?.id : -1),
         truckId: trip?.truck?.id ?? -1
     };
 
